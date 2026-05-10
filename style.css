@@ -1,34 +1,141 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #0a0a1a;
+  background: #09091a;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  min-height: 100vh;
-  padding: 16px 8px;
+  padding: 12px 6px 24px;
   font-family: 'Press Start 2P', monospace;
+  color: #fff;
 }
 
+/* ── Shared title ─────────────────────────────────────────────────────────── */
+.title {
+  color: #FFD700;
+  font-size: 12px;
+  text-align: center;
+  text-shadow: 3px 3px 0 #7a3e00;
+  letter-spacing: 1px;
+  line-height: 1.6;
+}
+
+/* ── Hidden utility ───────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   START SCREEN
+══════════════════════════════════════════════════════════════════ */
+#start-screen {
+  position: fixed;
+  inset: 0;
+  background: #09091a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+#start-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.dish-art-wrap {
+  border: 3px solid #8aae96;
+  background: #0f0f1e;
+  line-height: 0;         /* remove inline gap */
+  box-shadow: 0 0 18px rgba(138,174,150,0.35);
+}
+
+.dish-art-wrap canvas {
+  display: block;
+  width: 300px;
+  height: 148px;
+  image-rendering: pixelated;
+}
+
+/* Instructions paragraph */
+.instructions {
+  color: #e0e0e0;
+  font-size: 9px;
+  line-height: 2.1;
+  text-align: center;
+  border: 2px solid #333;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  font-style: italic;
+}
+
+/* Record + volume row */
+.start-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.hs-label {
+  color: #FFD700;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.btn-vol {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  background: #111;
+  color: #8aae96;
+  border: 2px solid #8aae96;
+  padding: 8px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-vol:hover { background: #8aae96; color: #111; }
+
+/* Play button — big & prominent */
+.btn-play {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  background: #1b5e20;
+  color: #fff;
+  border: 4px solid #4caf50;
+  padding: 18px 0;
+  width: 100%;
+  cursor: pointer;
+  text-shadow: 2px 2px 0 #0a3a0e;
+  box-shadow: 0 6px 0 #0a3a0e, 0 0 24px rgba(76,175,80,0.4);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn-play:hover  { background: #2e7d32; }
+.btn-play:active { transform: translateY(4px); box-shadow: 0 2px 0 #0a3a0e; }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   GAME WRAPPER
+══════════════════════════════════════════════════════════════════ */
 #game-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   max-width: 400px;
 }
 
-.title {
-  color: #FFD700;
-  font-size: 13px;
-  text-align: center;
-  text-shadow: 2px 2px #8B4513;
-  letter-spacing: 1px;
-}
-
+/* HUD bar */
 #hud {
   width: 360px;
   display: flex;
@@ -38,18 +145,20 @@ body {
   border: 3px solid #FFD700;
   padding: 6px 10px;
   color: #0f0;
-  font-size: 9px;
+  font-size: 8px;
 }
 
 #status-display { color: #FFD700; }
 
+/* Game canvas */
 #gameCanvas {
+  display: block;
   border: 4px solid #FFD700;
   image-rendering: pixelated;
-  display: block;
   background: #1a1a2e;
 }
 
+/* ── Controls ─────────────────────────────────────────────────── */
 #controls {
   display: flex;
   flex-direction: column;
@@ -63,61 +172,81 @@ body {
   justify-content: center;
 }
 
+/* All buttons share base style */
 button {
   font-family: 'Press Start 2P', monospace;
+  cursor: pointer;
+  border: 3px solid;
+  transition: background 0.08s, color 0.08s, transform 0.06s;
+}
+button:active { transform: translateY(2px); }
+
+/* ── Direction buttons (LEFT / RIGHT) — PRIMARY ── */
+.btn-dir {
+  font-size: 11px;
+  padding: 18px 0;
+  flex: 1;
+  background: #7a3e00;
+  color: #FFD700;
+  border-color: #FFD700;
+  text-shadow: 1px 1px 0 #000;
+  box-shadow: 0 5px 0 #3d1f00, 0 0 18px rgba(255,215,0,0.25);
+}
+.btn-dir:hover  { background: #a05000; }
+.btn-dir:active { box-shadow: 0 1px 0 #3d1f00; }
+
+/* ── Secondary buttons (pause, music, reset) ── */
+.btn-sec {
   font-size: 8px;
+  padding: 11px 10px;
+  flex: 1;
   background: #111;
   color: #FFD700;
-  border: 3px solid #FFD700;
-  padding: 10px 12px;
-  cursor: pointer;
-  flex: 1;
-  transition: background 0.1s, color 0.1s;
-  text-transform: uppercase;
+  border-color: #555;
 }
+.btn-sec:hover { background: #222; border-color: #FFD700; }
 
-button:hover, button:active {
-  background: #FFD700;
-  color: #111;
-}
-
+/* Keyboard hint */
 #keys-hint {
-  color: #555;
+  color: #444;
   font-size: 7px;
   text-align: center;
-  line-height: 1.8;
+  line-height: 2;
 }
 
-/* Overlay */
+
+/* ══════════════════════════════════════════════════════════════════
+   GAME-OVER OVERLAY
+══════════════════════════════════════════════════════════════════ */
 #overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.82);
+  background: rgba(0,0,0,0.85);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
+  z-index: 300;
 }
 
-#overlay.hidden { display: none; }
-
 #overlay-box {
-  background: #0a0a1a;
-  border: 4px solid #FFD700;
+  background: #09091a;
+  border: 4px solid #FF1744;
   padding: 32px 24px;
-  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 18px;
   align-items: center;
-  min-width: 260px;
+  gap: 16px;
+  min-width: 280px;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(255,23,68,0.5);
 }
 
 #overlay-title {
-  color: #ff4444;
-  font-size: 14px;
-  line-height: 1.8;
-  text-shadow: 2px 2px #000;
+  color: #FF1744;
+  font-size: 13px;
+  line-height: 1.9;
+  text-shadow: 2px 2px 0 #000;
 }
 
 #overlay-score {
@@ -125,8 +254,45 @@ button:hover, button:active {
   font-size: 11px;
 }
 
-#overlay-box button {
+#overlay-record {
+  color: #FFD700;
   font-size: 10px;
-  padding: 12px 20px;
+}
+
+/* Reset button in overlay */
+.btn-reset {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
   width: 100%;
+  padding: 14px 0;
+  background: #1b5e20;
+  color: #fff;
+  border: 3px solid #4caf50;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #0a3a0e;
+}
+.btn-reset:hover  { background: #2e7d32; }
+.btn-reset:active { transform: translateY(3px); box-shadow: 0 1px 0 #0a3a0e; }
+
+/* ACI "Serve Aiuto?" button */
+#overlay-box a { width: 100%; text-decoration: none; }
+
+.btn-help {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  width: 100%;
+  padding: 13px 0;
+  background: #b71c1c;
+  color: #fff;
+  border: 3px solid #ff5252;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #7f0000;
+  animation: helpPulse 1.4s infinite alternate;
+}
+.btn-help:hover  { background: #d32f2f; }
+.btn-help:active { transform: translateY(3px); box-shadow: 0 1px 0 #7f0000; }
+
+@keyframes helpPulse {
+  from { box-shadow: 0 4px 0 #7f0000, 0 0 0   rgba(255,82,82,0); }
+  to   { box-shadow: 0 4px 0 #7f0000, 0 0 18px rgba(255,82,82,0.6); }
 }
