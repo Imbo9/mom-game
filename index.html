@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BMW X5 Racer - 8 bit</title>
+  <title>BMW X5 Racer - Per Antonella 💐</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,9 +14,15 @@
 <div id="start-screen">
   <div id="start-box">
 
+    <!-- Festive header -->
+    <div class="festa-header">
+      🌸 Antonella! 🌸<br>
+      <span class="festa-sub">Buona Festa della Mamma!!</span>
+    </div>
+
     <h1 class="title">🏎 BMW X5 RACER 🏎</h1>
 
-    <!-- 8-bit dish art drawn by game.js -->
+    <!-- 8-bit ceramic dish art -->
     <div class="dish-art-wrap">
       <canvas id="dishArt" width="300" height="148"></canvas>
     </div>
@@ -25,16 +31,15 @@
     <p class="instructions">
       Guida la BMW X5 di tuo marito<br>
       collezionando tutti i piatti,<br>
-      ma fai attenzione ai marciapiedi!!
+      ma fai attenzione alle isole pedonali!!
     </p>
 
-    <!-- Record & volume row -->
+    <!-- Record & volume -->
     <div class="start-meta">
       <span class="hs-label">🏆 RECORD: <span id="hs-display">0</span></span>
       <button id="btn-vol-start" class="btn-vol">♫ VOLUME ON</button>
     </div>
 
-    <!-- Big play button -->
     <button id="btn-play" class="btn-play">▶ GIOCA!</button>
 
   </div>
@@ -42,7 +47,7 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════
-     GAME SCREEN (hidden until play is pressed)
+     GAME SCREEN
 ═══════════════════════════════════════════════════════════════ -->
 <div id="game-wrapper" class="hidden">
 
@@ -56,21 +61,23 @@
 
   <canvas id="gameCanvas" width="360" height="540"></canvas>
 
-  <!-- Controls: left/right are primary, bigger -->
   <div id="controls">
+    <!-- Primary row: direction buttons + pause -->
     <div class="ctrl-row main-row">
       <button id="btn-left"  class="btn-dir" onclick="game.moveLeft()">◀ SINISTRA</button>
       <button id="btn-pause" class="btn-sec" onclick="game.togglePause()">⏸</button>
       <button id="btn-right" class="btn-dir" onclick="game.moveRight()">DESTRA ▶</button>
     </div>
+    <!-- Secondary row -->
     <div class="ctrl-row">
-      <button id="btn-music" class="btn-sec" onclick="game.toggleMusic()">♫ MUSICA ON</button>
-      <button class="btn-sec" onclick="game.reset()">↺ RICOMINCIA</button>
+      <button id="btn-music"    class="btn-sec" onclick="game.toggleMusic()">♫ MUSICA ON</button>
+      <button                   class="btn-sec" onclick="game.reset()">↺ RESET</button>
+      <button                   class="btn-home btn-sec" onclick="goHome()">🏠 HOME</button>
     </div>
   </div>
 
   <div id="keys-hint">
-    ← / → corsie &nbsp;|&nbsp; P pausa &nbsp;|&nbsp; R ricomincia &nbsp;|&nbsp; M musica
+    ← / → corsie &nbsp;|&nbsp; P pausa &nbsp;|&nbsp; R reset &nbsp;|&nbsp; M musica
   </div>
 
 </div>
@@ -89,23 +96,22 @@
        target="_blank" rel="noopener noreferrer">
       <button class="btn-help">🆘 SERVE AIUTO?</button>
     </a>
+    <button class="btn-home-over" onclick="goHome()">🏠 TORNA ALLA HOME</button>
   </div>
 </div>
 
 
 <script src="game.js"></script>
 <script>
-  // Instantiate game (canvas hidden, no loop yet)
   const game = new Game('gameCanvas');
 
   // Populate start-screen high score
   document.getElementById('hs-display').textContent = game._getHighScore();
 
-  // Draw dish art
+  // Draw dish pixel art
   (function () {
-    const c   = document.getElementById('dishArt');
-    const ctx = c.getContext('2d');
-    drawDishArt(ctx, c.width, c.height);
+    const c = document.getElementById('dishArt');
+    drawDishArt(c.getContext('2d'), c.width, c.height);
   })();
 
   // Volume toggle on start screen
@@ -121,10 +127,22 @@
     game.init();
   });
 
+  // Return to home from anywhere
+  function goHome() {
+    game.audio.stopEngine();
+    game.audio.stopMusic();
+    if (game._raf) cancelAnimationFrame(game._raf);
+    game.gameOver = true;
+    document.getElementById('overlay').classList.add('hidden');
+    document.getElementById('game-wrapper').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+    document.getElementById('hs-display').textContent = game._getHighScore();
+  }
+
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft')        game.moveLeft();
-    if (e.key === 'ArrowRight')       game.moveRight();
+    if (e.key === 'ArrowLeft')          game.moveLeft();
+    if (e.key === 'ArrowRight')         game.moveRight();
     if (e.key === 'p' || e.key === 'P') game.togglePause();
     if (e.key === 'r' || e.key === 'R') game.reset();
     if (e.key === 'm' || e.key === 'M') game.toggleMusic();
