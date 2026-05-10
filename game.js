@@ -6,8 +6,12 @@ const C = {
   HEIGHT: 540,
   LANES:  3,
   LANE_W: 120,  // 360 / 3
-  CAR_W:  56,
-  CAR_H:  90,
+  CAR_W:  70,
+  CAR_H:  108,
+  TILT_MAX:       1.0,   // max tilt magnitude on lane change
+  TILT_DECAY:     0.80,  // multiplier per frame
+  TILT_THRESHOLD: 0.01,  // snap to 0 below this
+  TILT_SKEW:      0.22,  // canvas skew factor (higher = more lean)
   DISH_W: 58,   // enlarged ceramic plate
   DISH_H: 58,
   SIDE_W: 80,   // sidewalk obstacle width
@@ -149,89 +153,197 @@ class Renderer {
     ctx.strokeRect(2, 0, C.WIDTH - 4, C.HEIGHT);
   }
 
+  // Pixel-rounded rectangle helper
+  _rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);    ctx.arcTo(x+w, y,   x+w, y+r,   r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+    ctx.lineTo(x + r, y + h);    ctx.arcTo(x,   y+h, x,   y+h-r, r);
+    ctx.lineTo(x, y + r);         ctx.arcTo(x,   y,   x+r, y,     r);
+    ctx.closePath();
+  }
+
   // tilt: -1 = leaning left, 0 = straight, +1 = leaning right
   drawCar(lane, y, tilt) {
     const ctx = this.ctx;
     const cx  = laneX(lane);
+    const w   = C.CAR_W;
+    const h   = C.CAR_H;
 
     ctx.save();
-    // Translate to car center, apply horizontal skew for lean effect
-    ctx.translate(cx, y + C.CAR_H / 2);
-    ctx.transform(1, 0, tilt * 0.13, 1, 0, 0);
+    // ── Lean: translate to car center, skew whole car sideways
+    ctx.translate(cx, y + h / 2);
+    ctx.transform(1, 0, tilt * C.TILT_SKEW, 1, 0, 0);
 
-    const x = -C.CAR_W / 2;
-    const oy = -C.CAR_H / 2; // origin y within transformed space
+    const lx = -w / 2;  // left x in local space
+    const ty = -h / 2;  // top y in local space
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(x + 6 + tilt * 4, oy + 10, C.CAR_W - 4, C.CAR_H - 4);
+    // ── Drop shadow (offset by tilt direction)
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    this._rr(ctx, lx + 7 + tilt * 6, ty + 7, w - 2, h - 2, 8);
+    ctx.fill();
 
-    // Main body
-    ctx.fillStyle = '#9E9E9E';
-    ctx.fillRect(x + 4, oy + 14, C.CAR_W - 8, C.CAR_H - 24);
+    // ── Body outline / wheel arch edge (dark charcoal)
+    ctx.fillStyle = '#424242';
+    this._rr(ctx, lx, ty, w, h, 9);
+    ctx.fill();
 
-    // Roof
-    ctx.fillStyle = '#BDBDBD';
-    ctx.fillRect(x + 10, oy + 6, C.CAR_W - 20, 30);
+    // ── Main body (silver-grey metallic)
+    ctx.fillStyle = '#9e9e9e';
+    this._rr(ctx, lx + 3, ty + 3, w - 6, h - 6, 7);
+    ctx.fill();
 
-    // Hood
-    ctx.fillStyle = '#8a8a8a';
-    ctx.fillRect(x + 8, oy + C.CAR_H - 22, C.CAR_W - 16, 14);
+    // ── Body metallic sheen (light reflection strip)
+    ctx.fillStyle = 'rgba(230,230,230,0.45)';
+    ctx.fillRect(lx + 9, ty + 8, 9, h - 16);
 
-    // Windshield
-    ctx.fillStyle = '#B3E5FC';
-    ctx.fillRect(x + 12, oy + C.CAR_H - 28, C.CAR_W - 24, 10);
+    // ── Panoramic sunroof (dark tinted glass panel)
+    ctx.fillStyle = '#16213e';
+    this._rr(ctx, lx + 14, ty + 22, w - 28, h - 50, 4);
+    ctx.fill();
+    // glass highlight
+    ctx.fillStyle = 'rgba(130,180,255,0.18)';
+    ctx.fillRect(lx + 16, ty + 24, 10, 10);
 
-    // Rear window
-    ctx.fillStyle = '#B3E5FC';
-    ctx.fillRect(x + 12, oy + 10, C.CAR_W - 24, 12);
-
-    // Side windows — compress the side facing into turn
-    const winL = tilt < 0 ? 6 : 8;
-    const winR = tilt > 0 ? 6 : 8;
-    ctx.fillStyle = '#81D4FA';
-    ctx.fillRect(x + 5, oy + 16, winL, 18);
-    ctx.fillRect(x + C.CAR_W - 5 - winR, oy + 16, winR, 18);
-
-    // BMW kidney grille
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + 14, oy + C.CAR_H - 12, 10, 6);
-    ctx.fillRect(x + C.CAR_W - 24, oy + C.CAR_H - 12, 10, 6);
-
-    // Headlights
-    ctx.fillStyle = '#FFFF99';
-    ctx.fillRect(x + 6, oy + C.CAR_H - 14, 8, 5);
-    ctx.fillRect(x + C.CAR_W - 14, oy + C.CAR_H - 14, 8, 5);
-
-    // Tail lights
-    ctx.fillStyle = '#FF1744';
-    ctx.fillRect(x + 6, oy + 14, 7, 5);
-    ctx.fillRect(x + C.CAR_W - 13, oy + 14, 7, 5);
-
-    // Wheels — outer wheel lifts slightly during turn (smaller), inner compresses
-    const wOuterH = 14 + Math.abs(tilt) * 3;
-    const wInnerH = 16 - Math.abs(tilt) * 2;
-    ctx.fillStyle = '#111';
-    if (tilt < 0) {
-      // turning left: right side is outer
-      ctx.fillRect(x - 2, oy + C.CAR_H - 22, 10, wInnerH);
-      ctx.fillRect(x + C.CAR_W - 8, oy + C.CAR_H - 22, 10, wOuterH);
-      ctx.fillRect(x - 2, oy + 10, 10, wInnerH);
-      ctx.fillRect(x + C.CAR_W - 8, oy + 10, 10, wOuterH);
-    } else {
-      // turning right: left side is outer
-      ctx.fillRect(x - 2, oy + C.CAR_H - 22, 10, wOuterH);
-      ctx.fillRect(x + C.CAR_W - 8, oy + C.CAR_H - 22, 10, wInnerH);
-      ctx.fillRect(x - 2, oy + 10, 10, wOuterH);
-      ctx.fillRect(x + C.CAR_W - 8, oy + 10, 10, wInnerH);
-    }
-
-    // Wheel rims
+    // ── Roof rails (chrome strips alongside sunroof)
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(lx + 10, ty + 24, 3, h - 52);
+    ctx.fillRect(lx + w - 13, ty + 24, 3, h - 52);
+    // rail end caps
     ctx.fillStyle = '#888';
-    ctx.fillRect(x, oy + C.CAR_H - 20, 6, 12);
-    ctx.fillRect(x + C.CAR_W - 6, oy + C.CAR_H - 20, 6, 12);
-    ctx.fillRect(x, oy + 12, 6, 12);
-    ctx.fillRect(x + C.CAR_W - 6, oy + 12, 6, 12);
+    ctx.fillRect(lx + 10, ty + 23, 3, 3);
+    ctx.fillRect(lx + 10, ty + h - 30, 3, 3);
+    ctx.fillRect(lx + w - 13, ty + 23, 3, 3);
+    ctx.fillRect(lx + w - 13, ty + h - 30, 3, 3);
+
+    // ── BMW roundel on sunroof center
+    const rx = 0;
+    const ry = ty + 22 + (h - 50) / 2;
+    // outer chrome ring
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(rx, ry, 9, 0, Math.PI * 2); ctx.stroke();
+    // black surround
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI * 2); ctx.fill();
+    // blue quadrants (top-left, bottom-right)
+    ctx.fillStyle = '#0e66b0';
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.arc(rx, ry, 7, Math.PI, Math.PI * 1.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.arc(rx, ry, 7, 0, Math.PI * 0.5); ctx.closePath(); ctx.fill();
+    // white quadrants (top-right, bottom-left)
+    ctx.fillStyle = '#f5f5f5';
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.arc(rx, ry, 7, Math.PI * 1.5, Math.PI * 2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.arc(rx, ry, 7, Math.PI * 0.5, Math.PI); ctx.closePath(); ctx.fill();
+    // divider cross
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(rx - 7, ry); ctx.lineTo(rx + 7, ry); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rx, ry - 7); ctx.lineTo(rx, ry + 7); ctx.stroke();
+
+    // ── REAR (top of canvas = back of car) ──────────────
+    // Rear bumper / hatch area
+    ctx.fillStyle = '#757575';
+    ctx.fillRect(lx + 5, ty + 4, w - 10, 16);
+
+    // Tail lights — wide horizontal strips (BMW X5 L-shaped style)
+    ctx.fillStyle = '#b71c1c';
+    ctx.fillRect(lx + 4, ty + 4, 18, 10);   // left cluster
+    ctx.fillRect(lx + w - 22, ty + 4, 18, 10); // right cluster
+    // LED accent line
+    ctx.fillStyle = '#ff5252';
+    ctx.fillRect(lx + 4, ty + 5, 18, 2);
+    ctx.fillRect(lx + w - 22, ty + 5, 18, 2);
+    // reverse/fog light (white center)
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillRect(lx + w/2 - 6, ty + 6, 12, 5);
+    // spoiler lip
+    ctx.fillStyle = '#333';
+    ctx.fillRect(lx + 6, ty + 2, w - 12, 3);
+
+    // ── FRONT (bottom of canvas = front of car) ──────────
+    // Hood panel
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(lx + 5, ty + h - 22, w - 10, 16);
+    // Hood center crease
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(lx + w/2 - 2, ty + h - 22, 4, 16);
+
+    // BMW kidney grille — twin vertical slat openings
+    const gw = 13, gh = 10;
+    const gl = lx + w/2 - gw - 2;
+    const gr = lx + w/2 + 2;
+    const gy = ty + h - 14;
+    // grille surround (chrome)
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(gl - 1, gy - 1, gw + 2, gh + 2);
+    ctx.fillRect(gr - 1, gy - 1, gw + 2, gh + 2);
+    // grille opening (dark)
+    ctx.fillStyle = '#111';
+    ctx.fillRect(gl, gy, gw, gh);
+    ctx.fillRect(gr, gy, gw, gh);
+    // vertical slats inside grille
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    for (let s = 1; s <= 3; s++) {
+      const sx = gl + s * (gw / 4);
+      ctx.beginPath(); ctx.moveTo(sx, gy); ctx.lineTo(sx, gy + gh); ctx.stroke();
+      const sx2 = gr + s * (gw / 4);
+      ctx.beginPath(); ctx.moveTo(sx2, gy); ctx.lineTo(sx2, gy + gh); ctx.stroke();
+    }
+    // BMW logo on grille bridge
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(lx + w/2 - 2, gy, 4, gh);
+
+    // Headlights — angular BMW-style (L-shaped DRL)
+    ctx.fillStyle = '#fff9c4';
+    ctx.fillRect(lx + 4, ty + h - 20, 12, 8);   // left
+    ctx.fillRect(lx + w - 16, ty + h - 20, 12, 8); // right
+    // DRL strip (thin bright line)
+    ctx.fillStyle = '#ffe082';
+    ctx.fillRect(lx + 4, ty + h - 13, 12, 2);
+    ctx.fillRect(lx + w - 16, ty + h - 13, 12, 2);
+    // Headlight inner (blue tint projector)
+    ctx.fillStyle = '#bbdefb';
+    ctx.fillRect(lx + 6, ty + h - 19, 8, 5);
+    ctx.fillRect(lx + w - 14, ty + h - 19, 8, 5);
+
+    // ── WHEELS ───────────────────────────────────────────
+    // Front wheels steer slightly when tilting
+    const steer = tilt * 5;
+    const ww = 13, rwh = 20, fwh = 20;
+
+    // Rear-left wheel
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(lx - 4, ty + 10, ww, rwh);
+    ctx.fillStyle = '#9e9e9e'; // rim
+    ctx.fillRect(lx - 1, ty + 13, 6, 14);
+    ctx.fillStyle = '#555'; // spoke shadow
+    ctx.fillRect(lx + 1, ty + 17, 2, 6);
+
+    // Rear-right wheel
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(lx + w - ww + 4, ty + 10, ww, rwh);
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillRect(lx + w - 5, ty + 13, 6, 14);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(lx + w - 3, ty + 17, 2, 6);
+
+    // Front-left wheel (steered)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(lx - 4 + steer, ty + h - 30, ww, fwh);
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillRect(lx - 1 + steer, ty + h - 27, 6, 14);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(lx + 1 + steer, ty + h - 23, 2, 6);
+
+    // Front-right wheel (steered)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(lx + w - ww + 4 + steer, ty + h - 30, ww, fwh);
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillRect(lx + w - 5 + steer, ty + h - 27, 6, 14);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(lx + w - 3 + steer, ty + h - 23, 2, 6);
 
     ctx.restore();
   }
@@ -491,8 +603,8 @@ class Game {
     this.sidewalks = this.sidewalks.filter(s => s.y < C.HEIGHT + 50);
 
     // Tilt easing — exponential decay back to 0
-    this.carTilt *= 0.82;
-    if (Math.abs(this.carTilt) < 0.01) this.carTilt = 0;
+    this.carTilt *= C.TILT_DECAY;
+    if (Math.abs(this.carTilt) < C.TILT_THRESHOLD) this.carTilt = 0;
 
     // Particles
     for (const p of this.particles) {
