@@ -20,10 +20,12 @@ const C = {
   TILT_DECAY:     0.80,
   TILT_THRESHOLD: 0.01,
   TILT_SKEW:      0.22,
-  ROAD_COLOR:  '#2a2a2a',
+  ROAD_COLOR:  '#1C1810',  // warm asphalt – colline veronesi
   LANE_COLOR:  '#FFFFFF',
+  GRASS_W:     16,         // roadside grass strip width px
+  TREE_SPACING: 180,       // cypress repeat interval px
   HS_KEY:      'bmwRacer_hs',
-  MUSIC_BPM:   180,
+  MUSIC_BPM:   200,        // tarantella tempo
   KMH_MAX:     300,
   KMH_FRAMES:  10800,   // 60 fps × 180 s = 3 minutes
 };
@@ -50,16 +52,20 @@ const ISLAND_DEFS = [
 // Spawn weight per definition (single islands more common)
 const ISLAND_WEIGHTS = [2, 2, 2, 1, 1];
 
-// ─── 8-bit melody (freq Hz, duration in beats at MUSIC_BPM) ──────────────────
+// ─── 8-bit folk melody – tarantella in La minore (200 BPM, 16 beats) ─────────
 const MUSIC_NOTES = [
-  [523,0.5],[587,0.5],[659,0.5],[698,0.5], // C D E F
-  [784,1.0],[0,  0.5],[784,0.5],           // G   G
-  [698,0.5],[659,0.5],[587,0.5],[523,0.5], // F E D C
-  [659,1.5],[0,  0.5],                     // E
-  [659,0.5],[784,0.5],[880,0.5],[784,0.5], // E G A G
-  [698,0.5],[659,0.5],[0,  0.5],[523,0.5], // F E   C
-  [587,0.5],[659,0.5],[698,0.5],[659,0.5], // D E F E
-  [523,2.0],                               // C (hold)
+  // Phrase 1 — ascending folk motif
+  [440,0.5],[466,0.25],[523,0.25],[587,0.5],[0,0.25],[587,0.25],
+  [523,0.25],[466,0.25],[440,0.5],[392,1.0],
+  // Phrase 2 — rhythmic bounce
+  [440,0.5],[392,0.25],[440,0.25],[466,0.5],[523,0.5],
+  [587,0.5],[0,0.5],[440,1.0],
+  // Phrase 3 — climax, registro alto
+  [523,0.5],[587,0.25],[659,0.25],[698,0.5],[0,0.25],[659,0.25],
+  [587,0.25],[523,0.25],[466,0.5],[440,1.0],
+  // Phrase 4 — cadenza di risoluzione
+  [392,0.5],[440,0.25],[392,0.25],[349,0.5],[392,0.5],
+  [440,2.0],
 ];
 
 // ─── Dish art (start-screen canvas) ──────────────────────────────────────────
@@ -243,15 +249,47 @@ class Renderer {
 
   drawRoad(offset) {
     const ctx = this.ctx;
+    // Warm asphalt
     ctx.fillStyle = C.ROAD_COLOR; ctx.fillRect(0, 0, C.WIDTH, C.HEIGHT);
-    ctx.setLineDash([30, 20]); ctx.strokeStyle = C.LANE_COLOR; ctx.lineWidth = 3;
+    // Grass shoulder strips — bordo campagna veronese
+    ctx.fillStyle = '#2A5C20';
+    ctx.fillRect(0, 0, C.GRASS_W, C.HEIGHT);
+    ctx.fillRect(C.WIDTH - C.GRASS_W, 0, C.GRASS_W, C.HEIGHT);
+    ctx.fillStyle = '#1C4018';
+    ctx.fillRect(0, 0, C.GRASS_W >> 1, C.HEIGHT);
+    ctx.fillRect(C.WIDTH - (C.GRASS_W >> 1), 0, C.GRASS_W >> 1, C.HEIGHT);
+    // Dashed lane dividers
+    ctx.setLineDash([28, 18]); ctx.strokeStyle = C.LANE_COLOR; ctx.lineWidth = 2;
     for (let l = 1; l < C.LANES; l++) {
-      const x = l * C.LANE_W, startY = (offset % 50) - 50;
-      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, C.HEIGHT + 50); ctx.stroke();
+      const x = l * C.LANE_W, startY = (offset % 46) - 46;
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, C.HEIGHT + 46); ctx.stroke();
     }
     ctx.setLineDash([]);
-    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 5;
+    // Solid edge lines at grass boundary
+    ctx.strokeStyle = C.LANE_COLOR; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(C.GRASS_W, 0); ctx.lineTo(C.GRASS_W, C.HEIGHT); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(C.WIDTH - C.GRASS_W, 0); ctx.lineTo(C.WIDTH - C.GRASS_W, C.HEIGHT); ctx.stroke();
+    // Decorative inner border
+    ctx.strokeStyle = '#C8860A'; ctx.lineWidth = 5;
     ctx.strokeRect(2, 0, C.WIDTH - 4, C.HEIGHT);
+  }
+
+  drawRoadside(offset) {
+    const ctx = this.ctx;
+    const tx = C.GRASS_W >> 1; // center of grass strip
+    for (const x of [tx, C.WIDTH - tx]) {
+      let ty = (offset % C.TREE_SPACING) - C.TREE_SPACING;
+      while (ty < C.HEIGHT + 20) {
+        // 8-bit cypress — silhouette vista dall'alto
+        ctx.fillStyle = '#0B1E0B'; ctx.fillRect(x-4, ty-9,  9, 18);
+        ctx.fillStyle = '#143214'; ctx.fillRect(x-4, ty-11, 9, 14); ctx.fillRect(x-3, ty-4, 7, 8);
+        ctx.fillStyle = '#1E4C1E'; ctx.fillRect(x-3, ty-9,  7, 12); ctx.fillRect(x-4, ty-2, 9, 6);
+        ctx.fillStyle = '#286028'; ctx.fillRect(x-2, ty-7,  5,  9); ctx.fillRect(x-3, ty,   7, 4);
+        ctx.fillStyle = '#3A7A3A'; ctx.fillRect(x-1, ty-4,  3,  5);
+        ctx.fillStyle = '#4A9A4A'; ctx.fillRect(x-1, ty-3,  2,  3); // highlight
+        ty += C.TREE_SPACING;
+      }
+    }
   }
 
   _rr(ctx, x, y, w, h, r) {
@@ -467,9 +505,10 @@ class Game {
     this.score       = 0;
     this.speed       = C.ROAD_SPEED_INIT;
     this.roadOffset  = 0;
-    this.frame       = 0;
-    this.kmh         = 0;
-    this.paused      = false;
+    this.frame          = 0;
+    this.kmh            = 0;
+    this._shownMilestones = new Set();
+    this.paused         = false;
     this.gameOver    = false;
     this.dishes      = [];
     this.islands     = [];
@@ -547,6 +586,13 @@ class Game {
     this.frame++;
     this.speed += C.SPEED_INCREMENT;
     this.kmh = Math.min(C.KMH_MAX, Math.round(this.frame * C.KMH_MAX / C.KMH_FRAMES));
+    for (const m of [100, 200, 300]) {
+      if (this.kmh >= m && !this._shownMilestones.has(m)) {
+        this._shownMilestones.add(m);
+        this._setStatus(m === 300 ? 'MAX VELOCITA!' : m + ' KM/H!');
+        break;
+      }
+    }
     this.roadOffset = (this.roadOffset + this.speed) % C.HEIGHT;
 
     if (this.frame >= this._nextDish) {
@@ -590,6 +636,7 @@ class Game {
     const ctx = this.renderer.ctx, sh = this._shake;
     if (sh) { ctx.save(); ctx.translate(sh, 0); }
     this.renderer.drawRoad(this.roadOffset);
+    this.renderer.drawRoadside(this.roadOffset);
     for (const d of this.dishes)   this.renderer.drawDish(d);
     for (const s of this.islands)  this.renderer.drawIsland(s);
     this.renderer.drawCar(this.lane, this.carY, this.carTilt);
@@ -698,7 +745,7 @@ class Game {
           sc=document.getElementById('overlay-score'), rec=document.getElementById('overlay-record');
     if(ov)  ov.classList.remove('hidden');
     if(t)   t.textContent  = '💥 GOMME ESPLOSE! 💥';
-    if(sc)  sc.textContent = 'PUNTEGGIO: ' + this.score;
+    if(sc)  sc.textContent = 'PUNTEGGIO: ' + this.score + '  ·  ' + this.kmh + ' KM/H';
     const hs = this._getHighScore();
     if(rec) rec.textContent = '🏆 RECORD: ' + hs;
     const hsDsp=document.getElementById('hs-display'); if(hsDsp) hsDsp.textContent=hs;
