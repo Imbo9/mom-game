@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMW X5 - Corsa a 8 bit</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrapper">
+    <h1 class="title">&#127950; BMW X5 RACER &#127950;</h1>
+
+    <div id="hud">
+      <span id="score-display">PUNTI: <span id="score">0</span></span>
+      <span id="status-display">PRONTO!</span>
+      <span id="speed-display">VEL: <span id="speed">1</span>x</span>
+    </div>
+
+    <canvas id="gameCanvas" width="360" height="540"></canvas>
+
+    <div id="controls">
+      <div class="ctrl-row">
+        <button id="btn-left" onclick="game.moveLeft()">&#9664; SINISTRA</button>
+        <button id="btn-pause" onclick="game.togglePause()">&#9646;&#9646; PAUSA</button>
+        <button id="btn-right" onclick="game.moveRight()">DESTRA &#9654;</button>
+      </div>
+      <div class="ctrl-row">
+        <button id="btn-music" onclick="game.toggleMusic()">&#9835; MUSICA ON</button>
+        <button id="btn-reset" onclick="game.reset()">&#8635; RICOMINCIA</button>
+      </div>
+    </div>
+
+    <div id="keys-hint">
+      Tasti: &#8592;/&#8594; corsie &nbsp;|&nbsp; P pausa &nbsp;|&nbsp; R ricomincia &nbsp;|&nbsp; M musica
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div id="overlay-box">
+        <div id="overlay-title"></div>
+        <div id="overlay-score"></div>
+        <button onclick="game.reset()">&#8635; RICOMINCIA</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+  <script>
+    const game = new Game('gameCanvas');
+    game.init();
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft')  game.moveLeft();
+      if (e.key === 'ArrowRight') game.moveRight();
+      if (e.key === 'p' || e.key === 'P') game.togglePause();
+      if (e.key === 'r' || e.key === 'R') game.reset();
+      if (e.key === 'm' || e.key === 'M') game.toggleMusic();
+    });
+  </script>
+</body>
+</html>
