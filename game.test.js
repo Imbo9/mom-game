@@ -30,18 +30,66 @@ describe('dish dimensions', () => {
   test('DISH_H matches DISH_W', () => expect(C.DISH_H).toBe(58));
 });
 
-// ─── Tilt decay ───────────────────────────────────────────────────────────────
-describe('carTilt decay', () => {
-  test('tilt decays toward 0 each frame', () => {
-    let tilt = 1;
-    tilt *= 0.82;
-    expect(tilt).toBeCloseTo(0.82);
+// ─── Tilt animation ───────────────────────────────────────────────────────────
+describe('carTilt — set on lane change', () => {
+  test('moveLeft sets tilt to -TILT_MAX', () => {
+    // simulate moveLeft guard + assignment
+    let lane = 1, tilt = 0;
+    if (lane > 0) { lane--; tilt = -C.TILT_MAX; }
+    expect(tilt).toBe(-C.TILT_MAX);
   });
-  test('tilt clamps to 0 below threshold', () => {
-    let tilt = 0.009;
-    tilt *= 0.82;
-    if (Math.abs(tilt) < 0.01) tilt = 0;
+  test('moveRight sets tilt to +TILT_MAX', () => {
+    let lane = 1, tilt = 0;
+    if (lane < 2) { lane++; tilt = C.TILT_MAX; }
+    expect(tilt).toBe(C.TILT_MAX);
+  });
+  test('moveLeft at lane 0 does NOT change tilt', () => {
+    let lane = 0, tilt = 0;
+    if (lane > 0) { lane--; tilt = -C.TILT_MAX; }
     expect(tilt).toBe(0);
+  });
+  test('moveRight at lane 2 does NOT change tilt', () => {
+    let lane = 2, tilt = 0;
+    if (lane < 2) { lane++; tilt = C.TILT_MAX; }
+    expect(tilt).toBe(0);
+  });
+});
+
+describe('carTilt — decay each frame', () => {
+  test('decays by TILT_DECAY factor', () => {
+    let tilt = 1;
+    tilt *= C.TILT_DECAY;
+    expect(tilt).toBeCloseTo(C.TILT_DECAY);
+  });
+  test('snaps to 0 when below TILT_THRESHOLD', () => {
+    let tilt = C.TILT_THRESHOLD * 0.9;
+    tilt *= C.TILT_DECAY;
+    if (Math.abs(tilt) < C.TILT_THRESHOLD) tilt = 0;
+    expect(tilt).toBe(0);
+  });
+  test('after 20 frames tilt is nearly 0', () => {
+    let tilt = 1;
+    for (let i = 0; i < 20; i++) {
+      tilt *= C.TILT_DECAY;
+      if (Math.abs(tilt) < C.TILT_THRESHOLD) { tilt = 0; break; }
+    }
+    expect(Math.abs(tilt)).toBeLessThan(0.02);
+  });
+});
+
+describe('carTilt — front wheel steer offset', () => {
+  function steerOffset(tilt) { return tilt * 5; }
+  test('no steer when tilt is 0', () => expect(steerOffset(0)).toBe(0));
+  test('steer left when tilt is -1', () => expect(steerOffset(-1)).toBe(-5));
+  test('steer right when tilt is +1', () => expect(steerOffset(1)).toBe(5));
+  test('steer proportional at half tilt', () => expect(steerOffset(0.5)).toBeCloseTo(2.5));
+});
+
+describe('carTilt — skew factor', () => {
+  test('TILT_SKEW is 0.22', () => expect(C.TILT_SKEW).toBe(0.22));
+  test('max visible skew at tilt 1 is TILT_SKEW', () => {
+    const skewX = 1 * C.TILT_SKEW;
+    expect(skewX).toBeCloseTo(0.22);
   });
 });
 
