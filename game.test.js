@@ -389,3 +389,31 @@ describe('MUSIC_NOTES', () => {
     expect(minFreq).toBe(523);
   });
 });
+
+// ─── Speedometer (km/h) ───────────────────────────────────────────────────────
+describe('speedometer constants', () => {
+  test('KMH_MAX is 300',                    () => expect(C.KMH_MAX).toBe(300));
+  test('KMH_FRAMES is 10800 (3 min × 60fps)', () => expect(C.KMH_FRAMES).toBe(10800));
+});
+
+describe('speedometer — km/h formula', () => {
+  const kmh = (frame) => Math.min(C.KMH_MAX, Math.round(frame * C.KMH_MAX / C.KMH_FRAMES));
+
+  test('starts at 0 km/h on frame 0',          () => expect(kmh(0)).toBe(0));
+  test('reaches 300 km/h at frame 10800',       () => expect(kmh(10800)).toBe(300));
+  test('caps at 300 after frame 10800',         () => expect(kmh(20000)).toBe(300));
+  test('is ~150 km/h at halftime (frame 5400)', () => expect(kmh(5400)).toBe(150));
+  test('is ~100 km/h at 1/3 time (frame 3600)', () => expect(kmh(3600)).toBe(100));
+  test('never exceeds KMH_MAX',                 () => {
+    for (const f of [0, 1000, 5000, 10800, 15000, 100000])
+      expect(kmh(f)).toBeLessThanOrEqual(C.KMH_MAX);
+  });
+  test('is non-decreasing',                     () => {
+    let prev = 0;
+    for (let f = 0; f <= 12000; f += 600) {
+      const v = kmh(f);
+      expect(v).toBeGreaterThanOrEqual(prev);
+      prev = v;
+    }
+  });
+});

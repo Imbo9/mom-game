@@ -24,6 +24,8 @@ const C = {
   LANE_COLOR:  '#FFFFFF',
   HS_KEY:      'bmwRacer_hs',
   MUSIC_BPM:   180,
+  KMH_MAX:     300,
+  KMH_FRAMES:  10800,   // 60 fps × 180 s = 3 minutes
 };
 
 function laneX(lane) { return lane * C.LANE_W + C.LANE_W / 2; }
@@ -466,6 +468,7 @@ class Game {
     this.speed       = C.ROAD_SPEED_INIT;
     this.roadOffset  = 0;
     this.frame       = 0;
+    this.kmh         = 0;
     this.paused      = false;
     this.gameOver    = false;
     this.dishes      = [];
@@ -543,6 +546,7 @@ class Game {
   _update() {
     this.frame++;
     this.speed += C.SPEED_INCREMENT;
+    this.kmh = Math.min(C.KMH_MAX, Math.round(this.frame * C.KMH_MAX / C.KMH_FRAMES));
     this.roadOffset = (this.roadOffset + this.speed) % C.HEIGHT;
 
     if (this.frame >= this._nextDish) {
@@ -679,10 +683,9 @@ class Game {
   _setHighScore(s) { try { localStorage.setItem(C.HS_KEY,String(s)); } catch(e){} }
 
   _updateHUD() {
-    const s=document.getElementById('score'), sp=document.getElementById('speed'), hsh=document.getElementById('hs-hud');
-    if(s)   s.textContent   = this.score;
-    if(sp)  sp.textContent  = this.speed.toFixed(1);
-    if(hsh) hsh.textContent = this._getHighScore();
+    const s=document.getElementById('score'), kmhEl=document.getElementById('kmh-display');
+    if(s)     s.textContent   = this.score;
+    if(kmhEl) kmhEl.textContent = this.kmh;
   }
   _setStatus(text) { const el=document.getElementById('status-display'); if(el) el.textContent=text; }
   _updateMusicBtn() {
