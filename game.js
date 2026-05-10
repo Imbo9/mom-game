@@ -8,8 +8,8 @@ const C = {
   LANE_W: 120,  // 360 / 3
   CAR_W:  56,
   CAR_H:  90,
-  DISH_W: 32,
-  DISH_H: 32,
+  DISH_W: 58,   // enlarged ceramic plate
+  DISH_H: 58,
   SIDE_W: 80,   // sidewalk obstacle width
   SIDE_H: 40,
   ROAD_SPEED_INIT: 3,
@@ -149,71 +149,91 @@ class Renderer {
     ctx.strokeRect(2, 0, C.WIDTH - 4, C.HEIGHT);
   }
 
-  drawCar(lane, y) {
+  // tilt: -1 = leaning left, 0 = straight, +1 = leaning right
+  drawCar(lane, y, tilt) {
     const ctx = this.ctx;
     const cx  = laneX(lane);
-    const x   = cx - C.CAR_W / 2;
+
+    ctx.save();
+    // Translate to car center, apply horizontal skew for lean effect
+    ctx.translate(cx, y + C.CAR_H / 2);
+    ctx.transform(1, 0, tilt * 0.13, 1, 0, 0);
+
+    const x = -C.CAR_W / 2;
+    const oy = -C.CAR_H / 2; // origin y within transformed space
 
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(x + 6, y + 8, C.CAR_W - 4, C.CAR_H - 4);
+    ctx.fillRect(x + 6 + tilt * 4, oy + 10, C.CAR_W - 4, C.CAR_H - 4);
 
-    // Body – BMW X5 silhouette (grey SUV)
     // Main body
     ctx.fillStyle = '#9E9E9E';
-    ctx.fillRect(x + 4, y + 14, C.CAR_W - 8, C.CAR_H - 24);
+    ctx.fillRect(x + 4, oy + 14, C.CAR_W - 8, C.CAR_H - 24);
 
     // Roof
     ctx.fillStyle = '#BDBDBD';
-    ctx.fillRect(x + 10, y + 6, C.CAR_W - 20, 30);
+    ctx.fillRect(x + 10, oy + 6, C.CAR_W - 20, 30);
 
     // Hood
     ctx.fillStyle = '#8a8a8a';
-    ctx.fillRect(x + 8, y + C.CAR_H - 22, C.CAR_W - 16, 14);
+    ctx.fillRect(x + 8, oy + C.CAR_H - 22, C.CAR_W - 16, 14);
 
-    // Windshield (front, bottom of screen = front of car)
+    // Windshield
     ctx.fillStyle = '#B3E5FC';
-    ctx.fillRect(x + 12, y + C.CAR_H - 28, C.CAR_W - 24, 10);
+    ctx.fillRect(x + 12, oy + C.CAR_H - 28, C.CAR_W - 24, 10);
 
     // Rear window
     ctx.fillStyle = '#B3E5FC';
-    ctx.fillRect(x + 12, y + 10, C.CAR_W - 24, 12);
+    ctx.fillRect(x + 12, oy + 10, C.CAR_W - 24, 12);
 
-    // Side windows
+    // Side windows — compress the side facing into turn
+    const winL = tilt < 0 ? 6 : 8;
+    const winR = tilt > 0 ? 6 : 8;
     ctx.fillStyle = '#81D4FA';
-    ctx.fillRect(x + 5, y + 16, 8, 18);
-    ctx.fillRect(x + C.CAR_W - 13, y + 16, 8, 18);
+    ctx.fillRect(x + 5, oy + 16, winL, 18);
+    ctx.fillRect(x + C.CAR_W - 5 - winR, oy + 16, winR, 18);
 
-    // BMW kidney grille (front)
+    // BMW kidney grille
     ctx.fillStyle = '#222';
-    ctx.fillRect(x + 14, y + C.CAR_H - 12, 10, 6);
-    ctx.fillRect(x + C.CAR_W - 24, y + C.CAR_H - 12, 10, 6);
+    ctx.fillRect(x + 14, oy + C.CAR_H - 12, 10, 6);
+    ctx.fillRect(x + C.CAR_W - 24, oy + C.CAR_H - 12, 10, 6);
 
     // Headlights
     ctx.fillStyle = '#FFFF99';
-    ctx.fillRect(x + 6, y + C.CAR_H - 14, 8, 5);
-    ctx.fillRect(x + C.CAR_W - 14, y + C.CAR_H - 14, 8, 5);
+    ctx.fillRect(x + 6, oy + C.CAR_H - 14, 8, 5);
+    ctx.fillRect(x + C.CAR_W - 14, oy + C.CAR_H - 14, 8, 5);
 
     // Tail lights
     ctx.fillStyle = '#FF1744';
-    ctx.fillRect(x + 6, y + 14, 7, 5);
-    ctx.fillRect(x + C.CAR_W - 13, y + 14, 7, 5);
+    ctx.fillRect(x + 6, oy + 14, 7, 5);
+    ctx.fillRect(x + C.CAR_W - 13, oy + 14, 7, 5);
 
-    // Wheels
+    // Wheels — outer wheel lifts slightly during turn (smaller), inner compresses
+    const wOuterH = 14 + Math.abs(tilt) * 3;
+    const wInnerH = 16 - Math.abs(tilt) * 2;
     ctx.fillStyle = '#111';
-    // front-left, front-right
-    ctx.fillRect(x - 2, y + C.CAR_H - 22, 10, 16);
-    ctx.fillRect(x + C.CAR_W - 8, y + C.CAR_H - 22, 10, 16);
-    // rear-left, rear-right
-    ctx.fillRect(x - 2, y + 10, 10, 16);
-    ctx.fillRect(x + C.CAR_W - 8, y + 10, 10, 16);
+    if (tilt < 0) {
+      // turning left: right side is outer
+      ctx.fillRect(x - 2, oy + C.CAR_H - 22, 10, wInnerH);
+      ctx.fillRect(x + C.CAR_W - 8, oy + C.CAR_H - 22, 10, wOuterH);
+      ctx.fillRect(x - 2, oy + 10, 10, wInnerH);
+      ctx.fillRect(x + C.CAR_W - 8, oy + 10, 10, wOuterH);
+    } else {
+      // turning right: left side is outer
+      ctx.fillRect(x - 2, oy + C.CAR_H - 22, 10, wOuterH);
+      ctx.fillRect(x + C.CAR_W - 8, oy + C.CAR_H - 22, 10, wInnerH);
+      ctx.fillRect(x - 2, oy + 10, 10, wOuterH);
+      ctx.fillRect(x + C.CAR_W - 8, oy + 10, 10, wInnerH);
+    }
 
     // Wheel rims
     ctx.fillStyle = '#888';
-    ctx.fillRect(x, y + C.CAR_H - 20, 6, 12);
-    ctx.fillRect(x + C.CAR_W - 6, y + C.CAR_H - 20, 6, 12);
-    ctx.fillRect(x, y + 12, 6, 12);
-    ctx.fillRect(x + C.CAR_W - 6, y + 12, 6, 12);
+    ctx.fillRect(x, oy + C.CAR_H - 20, 6, 12);
+    ctx.fillRect(x + C.CAR_W - 6, oy + C.CAR_H - 20, 6, 12);
+    ctx.fillRect(x, oy + 12, 6, 12);
+    ctx.fillRect(x + C.CAR_W - 6, oy + 12, 6, 12);
+
+    ctx.restore();
   }
 
   drawDish(dish) {
@@ -221,35 +241,65 @@ class Renderer {
     const ctx = this.ctx;
     const cx  = dish.x;
     const cy  = dish.y;
-    const r   = C.DISH_W / 2;
+    const rx  = C.DISH_W / 2;        // horizontal radius
+    const ry  = rx * 0.36;           // vertical (perspective)
 
-    // Plate base
-    ctx.fillStyle = '#FAFAFA';
+    // ── Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath();
-    ctx.ellipse(cx, cy + 4, r, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 3, cy + 5, rx - 2, ry - 1, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Plate body
-    ctx.fillStyle = '#F5F5F5';
+    // ── Plate thickness edge (dark sage)
+    ctx.fillStyle = '#5a7a68';
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r, r * 0.38, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy + 3, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Plate rim
-    ctx.strokeStyle = '#CCC';
+    // ── Plate surface (sage green, like the photo)
+    ctx.fillStyle = '#8aae96';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Slight highlight gradient (lighter top-left arc)
+    ctx.fillStyle = 'rgba(200,230,210,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx - rx * 0.18, cy - ry * 0.3, rx * 0.55, ry * 0.45, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Inner ring (the well of the plate)
+    ctx.strokeStyle = '#6b9478';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r - 2, (r - 2) * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, rx * 0.62, ry * 0.62, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Food on plate (colorful pixel dots)
-    ctx.fillStyle = '#E53935'; ctx.fillRect(cx - 6, cy - 4, 5, 5);
-    ctx.fillStyle = '#43A047'; ctx.fillRect(cx + 2, cy - 4, 5, 5);
-    ctx.fillStyle = '#FF8F00'; ctx.fillRect(cx - 2, cy,     5, 5);
+    // ── Beaded rim — small dots evenly around the plate edge (like the photo)
+    const beadCount = 22;
+    for (let i = 0; i < beadCount; i++) {
+      const angle = (i / beadCount) * Math.PI * 2;
+      const bx = cx + Math.cos(angle) * (rx * 0.84);
+      const by = cy + Math.sin(angle) * (ry * 0.84);
+      // bead shadow
+      ctx.fillStyle = '#4e6e5a';
+      ctx.fillRect(bx - 1, by, 3, 3);
+      // bead highlight
+      ctx.fillStyle = '#b5d4bc';
+      ctx.fillRect(bx - 1, by - 1, 3, 3);
+    }
 
-    // Sparkle
+    // ── Food in the well (small colourful pixel squares)
+    ctx.fillStyle = '#e53935'; ctx.fillRect(cx - 7, cy - 3, 4, 4); // red
+    ctx.fillStyle = '#43a047'; ctx.fillRect(cx + 3, cy - 4, 4, 4); // green
+    ctx.fillStyle = '#ff8f00'; ctx.fillRect(cx - 2, cy + 1, 4, 3); // orange
+    ctx.fillStyle = '#f5f5dc'; ctx.fillRect(cx - 5, cy + 1, 3, 3); // cream
+
+    // ── Sparkle pixel (top-right)
+    ctx.fillStyle = '#fffde7';
+    ctx.fillRect(cx + rx - 7, cy - ry + 1, 3, 3);
     ctx.fillStyle = '#FFD700';
-    ctx.fillRect(cx + r - 4, cy - r + 2, 3, 3);
+    ctx.fillRect(cx + rx - 5, cy - ry - 1, 2, 2);
   }
 
   drawSidewalk(obs) {
@@ -333,6 +383,7 @@ class Game {
   _reset() {
     this.lane        = 1;          // 0=left, 1=center, 2=right
     this.carY        = C.HEIGHT - C.CAR_H - 20;
+    this.carTilt     = 0;          // -1 lean left, 0 straight, +1 lean right
     this.score       = 0;
     this.speed       = C.ROAD_SPEED_INIT;
     this.roadOffset  = 0;
@@ -367,8 +418,8 @@ class Game {
   }
 
   // ── Controls ──
-  moveLeft()  { if (!this.paused && !this.gameOver && this.lane > 0) this.lane--; }
-  moveRight() { if (!this.paused && !this.gameOver && this.lane < 2) this.lane++; }
+  moveLeft()  { if (!this.paused && !this.gameOver && this.lane > 0) { this.lane--; this.carTilt = -1; } }
+  moveRight() { if (!this.paused && !this.gameOver && this.lane < 2) { this.lane++; this.carTilt = +1; } }
 
   togglePause() {
     if (this.gameOver) return;
@@ -439,6 +490,10 @@ class Game {
     }
     this.sidewalks = this.sidewalks.filter(s => s.y < C.HEIGHT + 50);
 
+    // Tilt easing — exponential decay back to 0
+    this.carTilt *= 0.82;
+    if (Math.abs(this.carTilt) < 0.01) this.carTilt = 0;
+
     // Particles
     for (const p of this.particles) {
       p.x += p.vx; p.y += p.vy; p.life -= 0.02;
@@ -456,7 +511,7 @@ class Game {
     this.renderer.drawRoad(this.roadOffset);
     for (const d of this.dishes)    this.renderer.drawDish(d);
     for (const s of this.sidewalks) this.renderer.drawSidewalk(s);
-    this.renderer.drawCar(this.lane, this.carY);
+    this.renderer.drawCar(this.lane, this.carY, this.carTilt);
     if (this.particles.length) this.renderer.drawExplosion(this.particles);
   }
 
@@ -488,7 +543,7 @@ class Game {
     this.audio.stopEngine();
     this.audio.crashSound();
     this._createExplosion(laneX(this.lane), this.carY + C.CAR_H / 2);
-    this._draw();
+    this._draw(); // uses this.carTilt which is still set
     this.renderer.drawExplosion(this.particles);
     this._setStatus('GAME OVER!');
     setTimeout(() => this._showOverlay(), 900);

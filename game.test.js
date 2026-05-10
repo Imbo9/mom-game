@@ -24,6 +24,27 @@ describe('laneX()', () => {
   test('right lane center is 300', ()  => expect(laneX(2)).toBe(300));
 });
 
+// ─── Dish size ────────────────────────────────────────────────────────────────
+describe('dish dimensions', () => {
+  test('DISH_W is 58 (enlarged ceramic plate)', () => expect(C.DISH_W).toBe(58));
+  test('DISH_H matches DISH_W', () => expect(C.DISH_H).toBe(58));
+});
+
+// ─── Tilt decay ───────────────────────────────────────────────────────────────
+describe('carTilt decay', () => {
+  test('tilt decays toward 0 each frame', () => {
+    let tilt = 1;
+    tilt *= 0.82;
+    expect(tilt).toBeCloseTo(0.82);
+  });
+  test('tilt clamps to 0 below threshold', () => {
+    let tilt = 0.009;
+    tilt *= 0.82;
+    if (Math.abs(tilt) < 0.01) tilt = 0;
+    expect(tilt).toBe(0);
+  });
+});
+
 // ─── Collision helper ─────────────────────────────────────────────────────────
 // Re-implement _hitCar as a pure function for isolated testing
 function hitCar(carLane, carY, ox, oy, ow, oh) {
