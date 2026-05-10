@@ -99,6 +99,8 @@ body {
   color: #0f0; font-size: 8px;
 }
 #status-display { color: #FFD700; }
+.kmh-wrap { color: #0ff; white-space: nowrap; }
+#kmh-display { color: #0ff; }
 
 #gameCanvas { display: block; border: 4px solid #FFD700; image-rendering: pixelated; background: #1a1a2e; }
 
