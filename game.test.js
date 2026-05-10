@@ -346,9 +346,9 @@ describe('island collision — y distance check', () => {
 
 // ─── Music constants ──────────────────────────────────────────────────────────
 describe('music constants', () => {
-  test('MUSIC_BPM is 180',               () => expect(C.MUSIC_BPM).toBe(180));
+  test('MUSIC_BPM is 200',               () => expect(C.MUSIC_BPM).toBe(200));
   test('MUSIC_BPM is a positive number', () => expect(C.MUSIC_BPM).toBeGreaterThan(0));
-  test('beat duration = 60 / BPM',       () => expect(60 / C.MUSIC_BPM).toBeCloseTo(1/3));
+  test('beat duration = 60 / BPM',       () => expect(60 / C.MUSIC_BPM).toBeCloseTo(0.3));
 });
 
 // ─── MUSIC_NOTES ──────────────────────────────────────────────────────────────
@@ -369,10 +369,10 @@ describe('MUSIC_NOTES', () => {
     const total = MUSIC_NOTES.reduce((sum, [, b]) => sum + b, 0);
     expect(total).toBeCloseTo(16);
   });
-  test('loop duration at 180 BPM is ~5.33 seconds', () => {
+  test('loop duration at 200 BPM is ~4.8 seconds', () => {
     const total = MUSIC_NOTES.reduce((sum, [, b]) => sum + b, 0);
     const loopSec = total * (60 / C.MUSIC_BPM);
-    expect(loopSec).toBeCloseTo(16 / 3, 1);
+    expect(loopSec).toBeCloseTo(4.8, 1);
   });
   test('contains at least one rest (freq = 0)',    () => {
     expect(MUSIC_NOTES.some(([f]) => f === 0)).toBe(true);
@@ -380,13 +380,13 @@ describe('MUSIC_NOTES', () => {
   test('contains at least one pitched note',       () => {
     expect(MUSIC_NOTES.some(([f]) => f > 0)).toBe(true);
   });
-  test('highest note is 880 Hz (A5)',              () => {
+  test('highest note is 698 Hz (F5) – tarantella folk melody',  () => {
     const maxFreq = Math.max(...MUSIC_NOTES.map(([f]) => f));
-    expect(maxFreq).toBe(880);
+    expect(maxFreq).toBe(698);
   });
-  test('lowest pitched note is 523 Hz (C5)',       () => {
+  test('lowest pitched note is 349 Hz (F4)',       () => {
     const minFreq = Math.min(...MUSIC_NOTES.filter(([f]) => f > 0).map(([f]) => f));
-    expect(minFreq).toBe(523);
+    expect(minFreq).toBe(349);
   });
 });
 
@@ -416,4 +416,36 @@ describe('speedometer — km/h formula', () => {
       prev = v;
     }
   });
+});
+
+// ─── Veronese road design constants ──────────────────────────────────────────
+describe('road design constants', () => {
+  test('ROAD_COLOR is warm dark asphalt',   () => expect(C.ROAD_COLOR).toBe('#1C1810'));
+  test('GRASS_W is 16px',                   () => expect(C.GRASS_W).toBe(16));
+  test('TREE_SPACING is 180px',             () => expect(C.TREE_SPACING).toBe(180));
+  test('GRASS_W is even (needed for >> 1)', () => expect(C.GRASS_W % 2).toBe(0));
+  test('TREE_SPACING > CAR_H (trees never fully covered by car)', () =>
+    expect(C.TREE_SPACING).toBeGreaterThan(C.CAR_H));
+});
+
+// ─── Km/h milestone notifications ────────────────────────────────────────────
+describe('km/h milestone logic', () => {
+  const milestones = [100, 200, 300];
+  const kmh = (frame) => Math.min(C.KMH_MAX, Math.round(frame * C.KMH_MAX / C.KMH_FRAMES));
+
+  test('milestone 100 is first reached before 3650 frames', () => {
+    const reachedAt = Array.from({length: 4000}, (_, i) => i).find(f => kmh(f) >= 100);
+    expect(reachedAt).toBeLessThan(3650);
+  });
+  test('milestone 200 is first reached around frame 7200',  () => {
+    const reachedAt = Array.from({length: 8000}, (_, i) => i).find(f => kmh(f) >= 200);
+    expect(reachedAt).toBeGreaterThan(7100);
+    expect(reachedAt).toBeLessThan(7300);
+  });
+  test('milestones array has 3 entries',           () => expect(milestones.length).toBe(3));
+  test('milestones are in ascending order',        () => {
+    for (let i = 1; i < milestones.length; i++)
+      expect(milestones[i]).toBeGreaterThan(milestones[i-1]);
+  });
+  test('300 km/h milestone is the max speed',      () => expect(milestones[milestones.length - 1]).toBe(C.KMH_MAX));
 });
