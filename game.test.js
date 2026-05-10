@@ -12,7 +12,7 @@ global.window   = { AudioContext: undefined, webkitAudioContext: undefined };
 global.requestAnimationFrame  = (fn) => setTimeout(fn, 16);
 global.cancelAnimationFrame   = (id) => clearTimeout(id);
 
-const { laneX, C, AudioEngine, drawDishArt } = require('./game.js');
+const { laneX, C, AudioEngine, drawDishArt, ISLAND_DEFS, ISLAND_WEIGHTS, MUSIC_NOTES } = require('./game.js');
 
 beforeEach(() => { _storage = {}; });  // reset localStorage between tests
 
@@ -165,7 +165,6 @@ describe('crash animation', () => {
   });
   test('flash starts at 1.0 on impact', () => {
     let flash = 0;
-    // simulate phase 9 (impact)
     const ph = 9; if (ph === 9) flash = 1;
     expect(flash).toBe(1);
   });
@@ -219,5 +218,174 @@ describe('drawDishArt', () => {
       fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: '',
     };
     expect(() => drawDishArt(ctx, 300, 148)).not.toThrow();
+  });
+});
+
+// ─── ISLAND_DEFS — structure ─────────────────────────────────────────────────
+describe('ISLAND_DEFS — structure', () => {
+  test('exports 5 island types', () => expect(ISLAND_DEFS.length).toBe(5));
+  test('every def has lanes, x, w, arrow, key', () => {
+    for (const def of ISLAND_DEFS) {
+      expect(Array.isArray(def.lanes)).toBe(true);
+      expect(typeof def.x).toBe('number');
+      expect(typeof def.w).toBe('number');
+      expect(['left','right','both']).toContain(def.arrow);
+      expect(typeof def.key).toBe('string');
+    }
+  });
+});
+
+// ─── ISLAND_DEFS — individual types ──────────────────────────────────────────
+describe('ISLAND_DEFS — CENTER', () => {
+  const def = ISLAND_DEFS.find(d => d.key === 'CENTER');
+  test('exists',           () => expect(def).toBeDefined());
+  test('blocks lane 1',    () => expect(def.lanes).toEqual([1]));
+  test('arrow is both',    () => expect(def.arrow).toBe('both'));
+  test('x is laneX(1)',    () => expect(def.x).toBe(laneX(1)));
+  test('width is 90',      () => expect(def.w).toBe(90));
+});
+
+describe('ISLAND_DEFS — SINGLE_RIGHT', () => {
+  const def = ISLAND_DEFS.find(d => d.key === 'SINGLE_RIGHT');
+  test('exists',           () => expect(def).toBeDefined());
+  test('blocks lane 2',    () => expect(def.lanes).toEqual([2]));
+  test('arrow is left',    () => expect(def.arrow).toBe('left'));
+  test('x is laneX(2)',    () => expect(def.x).toBe(laneX(2)));
+  test('width is 90',      () => expect(def.w).toBe(90));
+});
+
+describe('ISLAND_DEFS — SINGLE_LEFT', () => {
+  const def = ISLAND_DEFS.find(d => d.key === 'SINGLE_LEFT');
+  test('exists',           () => expect(def).toBeDefined());
+  test('blocks lane 0',    () => expect(def.lanes).toEqual([0]));
+  test('arrow is right',   () => expect(def.arrow).toBe('right'));
+  test('x is laneX(0)',    () => expect(def.x).toBe(laneX(0)));
+  test('width is 90',      () => expect(def.w).toBe(90));
+});
+
+describe('ISLAND_DEFS — DOUBLE_RIGHT', () => {
+  const def = ISLAND_DEFS.find(d => d.key === 'DOUBLE_RIGHT');
+  test('exists',              () => expect(def).toBeDefined());
+  test('blocks lanes 1 and 2',() => expect(def.lanes).toEqual([1, 2]));
+  test('arrow is left',       () => expect(def.arrow).toBe('left'));
+  test('x is midpoint of laneX(1) and laneX(2)', () => expect(def.x).toBeCloseTo((laneX(1)+laneX(2))/2));
+  test('width is 218',        () => expect(def.w).toBe(218));
+});
+
+describe('ISLAND_DEFS — DOUBLE_LEFT', () => {
+  const def = ISLAND_DEFS.find(d => d.key === 'DOUBLE_LEFT');
+  test('exists',              () => expect(def).toBeDefined());
+  test('blocks lanes 0 and 1',() => expect(def.lanes).toEqual([0, 1]));
+  test('arrow is right',      () => expect(def.arrow).toBe('right'));
+  test('x is midpoint of laneX(0) and laneX(1)', () => expect(def.x).toBeCloseTo((laneX(0)+laneX(1))/2));
+  test('width is 218',        () => expect(def.w).toBe(218));
+});
+
+// ─── ISLAND_WEIGHTS ───────────────────────────────────────────────────────────
+describe('ISLAND_WEIGHTS', () => {
+  test('length matches ISLAND_DEFS', () => expect(ISLAND_WEIGHTS.length).toBe(ISLAND_DEFS.length));
+  test('all weights are positive integers', () => {
+    for (const w of ISLAND_WEIGHTS) { expect(w).toBeGreaterThan(0); expect(Number.isInteger(w)).toBe(true); }
+  });
+  test('total weight is 8 (single islands more common)', () => {
+    expect(ISLAND_WEIGHTS.reduce((a,b)=>a+b,0)).toBe(8);
+  });
+  test('single-lane islands (first 3) have weight 2 each', () => {
+    expect(ISLAND_WEIGHTS[0]).toBe(2);
+    expect(ISLAND_WEIGHTS[1]).toBe(2);
+    expect(ISLAND_WEIGHTS[2]).toBe(2);
+  });
+  test('double-lane islands (last 2) have weight 1 each', () => {
+    expect(ISLAND_WEIGHTS[3]).toBe(1);
+    expect(ISLAND_WEIGHTS[4]).toBe(1);
+  });
+});
+
+// ─── Island lane-based collision ─────────────────────────────────────────────
+function islandHitsCar(isleLanes, isleY, carLane, carY) {
+  if (!isleLanes.includes(carLane)) return false;
+  const carCY = carY + C.CAR_H / 2;
+  return Math.abs(isleY - carCY) < (C.ISLAND_H / 2 + C.CAR_H * 0.42);
+}
+
+describe('island collision — lane check', () => {
+  const cy = C.HEIGHT - C.CAR_H - 20;
+  const carCY = cy + C.CAR_H / 2;
+
+  test('CENTER hits when car is in lane 1',      () => expect(islandHitsCar([1], carCY, 1, cy)).toBe(true));
+  test('CENTER misses when car is in lane 0',    () => expect(islandHitsCar([1], carCY, 0, cy)).toBe(false));
+  test('CENTER misses when car is in lane 2',    () => expect(islandHitsCar([1], carCY, 2, cy)).toBe(false));
+
+  test('SINGLE_RIGHT hits lane 2',               () => expect(islandHitsCar([2], carCY, 2, cy)).toBe(true));
+  test('SINGLE_RIGHT misses lane 0',             () => expect(islandHitsCar([2], carCY, 0, cy)).toBe(false));
+  test('SINGLE_RIGHT misses lane 1',             () => expect(islandHitsCar([2], carCY, 1, cy)).toBe(false));
+
+  test('SINGLE_LEFT hits lane 0',                () => expect(islandHitsCar([0], carCY, 0, cy)).toBe(true));
+  test('SINGLE_LEFT misses lane 1',              () => expect(islandHitsCar([0], carCY, 1, cy)).toBe(false));
+  test('SINGLE_LEFT misses lane 2',              () => expect(islandHitsCar([0], carCY, 2, cy)).toBe(false));
+
+  test('DOUBLE_RIGHT hits lane 1',               () => expect(islandHitsCar([1,2], carCY, 1, cy)).toBe(true));
+  test('DOUBLE_RIGHT hits lane 2',               () => expect(islandHitsCar([1,2], carCY, 2, cy)).toBe(true));
+  test('DOUBLE_RIGHT misses lane 0',             () => expect(islandHitsCar([1,2], carCY, 0, cy)).toBe(false));
+
+  test('DOUBLE_LEFT hits lane 0',                () => expect(islandHitsCar([0,1], carCY, 0, cy)).toBe(true));
+  test('DOUBLE_LEFT hits lane 1',                () => expect(islandHitsCar([0,1], carCY, 1, cy)).toBe(true));
+  test('DOUBLE_LEFT misses lane 2',              () => expect(islandHitsCar([0,1], carCY, 2, cy)).toBe(false));
+});
+
+describe('island collision — y distance check', () => {
+  const cy = C.HEIGHT - C.CAR_H - 20;
+  const carCY = cy + C.CAR_H / 2;
+  const threshold = C.ISLAND_H / 2 + C.CAR_H * 0.42;
+
+  test('island exactly at car center hits',      () => expect(islandHitsCar([1], carCY,          1, cy)).toBe(true));
+  test('island just inside threshold hits',      () => expect(islandHitsCar([1], carCY + threshold - 1, 1, cy)).toBe(true));
+  test('island far above car does not hit',      () => expect(islandHitsCar([1], -200,            1, cy)).toBe(false));
+  test('island far below car does not hit',      () => expect(islandHitsCar([1], C.HEIGHT + 200,  1, cy)).toBe(false));
+});
+
+// ─── Music constants ──────────────────────────────────────────────────────────
+describe('music constants', () => {
+  test('MUSIC_BPM is 180',               () => expect(C.MUSIC_BPM).toBe(180));
+  test('MUSIC_BPM is a positive number', () => expect(C.MUSIC_BPM).toBeGreaterThan(0));
+  test('beat duration = 60 / BPM',       () => expect(60 / C.MUSIC_BPM).toBeCloseTo(1/3));
+});
+
+// ─── MUSIC_NOTES ──────────────────────────────────────────────────────────────
+describe('MUSIC_NOTES', () => {
+  test('is exported and is an array',              () => expect(Array.isArray(MUSIC_NOTES)).toBe(true));
+  test('has at least one note',                    () => expect(MUSIC_NOTES.length).toBeGreaterThan(0));
+  test('every entry is [freq, beats] pair',        () => {
+    for (const entry of MUSIC_NOTES) {
+      expect(Array.isArray(entry)).toBe(true);
+      expect(entry.length).toBe(2);
+      expect(typeof entry[0]).toBe('number'); // freq (0 = rest)
+      expect(typeof entry[1]).toBe('number'); // beats
+      expect(entry[1]).toBeGreaterThan(0);    // duration must be positive
+      expect(entry[0]).toBeGreaterThanOrEqual(0); // freq >= 0
+    }
+  });
+  test('total loop length is 16 beats', () => {
+    const total = MUSIC_NOTES.reduce((sum, [, b]) => sum + b, 0);
+    expect(total).toBeCloseTo(16);
+  });
+  test('loop duration at 180 BPM is ~5.33 seconds', () => {
+    const total = MUSIC_NOTES.reduce((sum, [, b]) => sum + b, 0);
+    const loopSec = total * (60 / C.MUSIC_BPM);
+    expect(loopSec).toBeCloseTo(16 / 3, 1);
+  });
+  test('contains at least one rest (freq = 0)',    () => {
+    expect(MUSIC_NOTES.some(([f]) => f === 0)).toBe(true);
+  });
+  test('contains at least one pitched note',       () => {
+    expect(MUSIC_NOTES.some(([f]) => f > 0)).toBe(true);
+  });
+  test('highest note is 880 Hz (A5)',              () => {
+    const maxFreq = Math.max(...MUSIC_NOTES.map(([f]) => f));
+    expect(maxFreq).toBe(880);
+  });
+  test('lowest pitched note is 523 Hz (C5)',       () => {
+    const minFreq = Math.min(...MUSIC_NOTES.filter(([f]) => f > 0).map(([f]) => f));
+    expect(minFreq).toBe(523);
   });
 });
