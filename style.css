@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0a1a;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 16px 8px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+#game-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.title {
+  color: #FFD700;
+  font-size: 13px;
+  text-align: center;
+  text-shadow: 2px 2px #8B4513;
+  letter-spacing: 1px;
+}
+
+#hud {
+  width: 360px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #111;
+  border: 3px solid #FFD700;
+  padding: 6px 10px;
+  color: #0f0;
+  font-size: 9px;
+}
+
+#status-display { color: #FFD700; }
+
+#gameCanvas {
+  border: 4px solid #FFD700;
+  image-rendering: pixelated;
+  display: block;
+  background: #1a1a2e;
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+}
+
+.ctrl-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  background: #111;
+  color: #FFD700;
+  border: 3px solid #FFD700;
+  padding: 10px 12px;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.1s, color 0.1s;
+  text-transform: uppercase;
+}
+
+button:hover, button:active {
+  background: #FFD700;
+  color: #111;
+}
+
+#keys-hint {
+  color: #555;
+  font-size: 7px;
+  text-align: center;
+  line-height: 1.8;
+}
+
+/* Overlay */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+#overlay.hidden { display: none; }
+
+#overlay-box {
+  background: #0a0a1a;
+  border: 4px solid #FFD700;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  min-width: 260px;
+}
+
+#overlay-title {
+  color: #ff4444;
+  font-size: 14px;
+  line-height: 1.8;
+  text-shadow: 2px 2px #000;
+}
+
+#overlay-score {
+  color: #0f0;
+  font-size: 11px;
+}
+
+#overlay-box button {
+  font-size: 10px;
+  padding: 12px 20px;
+  width: 100%;
+}
